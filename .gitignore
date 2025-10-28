@@ -1,0 +1,21 @@
+# env files
+.env
+.env.local
+.env.*.local
+
+# Python virtual environment
+venv/
+env/
+ENV/
+
+# kaggle file fallback (if users choose file method)
+.kaggle/
+**/kaggle.json
+
+# data stays out of git
+data/*
+!data/.gitkeep
+!data/README.md
+
+logs
+
