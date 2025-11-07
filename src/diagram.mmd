@@ -1,0 +1,58 @@
+graph TD
+  %% Inputs
+  A[Prev keyframe I0]
+  B[Next keyframe I1]
+  C[User line sketch (L_tau)]
+  T[Inbetween ratio tau (0..1)]
+
+  A -->|Input| P1[Optical flow RAFT/GMFlow]
+  B -->|Input| P1
+  C -->|Input| P2[Line processing (binarize, thin, XDoG)]
+  T -->|Input| E1[tau Positional Embedding]
+
+  P1 -->|Softmax splatting warp to tau| P1b
+  P1b -->|Warp from I0| W0[Warped hint from I0]
+  P1b -->|Warp from I1| W1[Warped hint from I1]
+  P1b -->|Occlusion/confidence| O[Occlusion/confidence maps]
+  P2 -->|Cleaned| Lc[Cleaned line map]
+
+  E1 -->|Embed| TE[Time embed]
+  TE --> CA1[Adapter 1/8]
+  TE --> CA2[Adapter 1/4]
+  TE --> CA3[Adapter 1/2]
+
+  Lc --> CA1
+  Lc --> CA2
+  W0 --> CA2
+  W1 --> CA2
+  O  --> CA3
+
+  %% Encoders
+  E0[Style/Color Encoder (VGG/CLIP)] -->|Encode| S[Style vector]
+  S --> D2[Down Block 2]
+  S --> U2[Up Block 2]
+
+  %% U-Net Backbone
+  D1[Down Block 1] --> D2
+  D2 --> D3[Down Block 3] 
+  D3 --> DB[Bottom Block]
+  DB --> U3[Up Block 3]
+  U3 --> U2
+  U2 --> U1[Up Block 1]
+
+  %% ControlNet adapters
+  CA1 -.->|Adapter 1/8| D3
+  CA2 -.->|Adapter 1/4| D2
+  CA3 -.->|Adapter 1/2| U2
+  CA4[Adapter 1] -.->|Adapter 1| U1
+
+  U1 --> H[RGB Head]
+  U1 --> HE[Edge/Line Aux Head]
+
+  %% Losses
+  H --> L1[L1/L2 Recon]
+  H --> LP[Perceptual (VGG/LPIPS)]
+  HE --> LC[Line adherence]
+  H --> WC[Warp Consistency]
+  H --> TC[Temporal Smoothness]
+  H --> ADV[Optional PatchGAN]
